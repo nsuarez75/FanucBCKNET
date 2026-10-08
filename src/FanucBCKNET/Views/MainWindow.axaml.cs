@@ -1,68 +1,174 @@
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
-using Avalonia.Threading;
 using FanucBCKNET.Models;
-using FanucBCKNET.Services;
+using FanucBCKNET.ViewModels;
 
 namespace FanucBCKNET.Views;
 
 public partial class MainWindow : Window
 {
-    private readonly RobotStore _store = new();
-    private readonly FtpBackupService _ftpService = new();
-
-    private string _targetFolder = "";
-    private int _completed;
+    public MainWindowViewModel ViewModel { get; } = new();
 
     public MainWindow()
     {
         InitializeComponent();
-        RefreshGroups();
-        RefreshList();
+        DataContext = ViewModel;
     }
 
-    private void OnAddRobot(object? sender, RoutedEventArgs e)
-    {
-        var nombre = NombreBox.Text?.Trim() ?? "";
-        var grupo = GrupoBox.Text?.Trim() ?? "";
-        var ip = IpBox.Text?.Trim() ?? "";
+    // ---------- Proyectos ----------
 
-        if (nombre == "" || grupo == "" || ip == "")
+    private async void OnNewProject(object? sender, RoutedEventArgs e)
+    {
+        var nombre = await new ProjectDialog().ShowDialog<string?>(this);
+        if (nombre is not null)
+        {
+            ViewModel.AddProject(nombre);
+        }
+    }
+
+    private async void OnEditProject(object? sender, RoutedEventArgs e)
+    {
+        if (ViewModel.SelectedProject is null)
+        {
+            await Info("Selecciona primero un proyecto.");
+            return;
+        }
+
+        var nombre = await new ProjectDialog(ViewModel.SelectedProject.Nombre).ShowDialog<string?>(this);
+        if (nombre is not null)
+        {
+            ViewModel.RenameSelectedProject(nombre);
+        }
+    }
+
+    private async void OnDeleteProject(object? sender, RoutedEventArgs e)
+    {
+        if (ViewModel.SelectedProject is null)
+        {
+            await Info("Selecciona primero un proyecto.");
+            return;
+        }
+
+        var confirmado = await new ConfirmDialog(
+            $"¿Borrar el proyecto \"{ViewModel.SelectedProject.Nombre}\" y sus {ViewModel.SelectedProject.Robots.Count} robot(s)?",
+            "Borrar proyecto").ShowDialog<bool>(this);
+
+        if (confirmado)
+        {
+            ViewModel.DeleteProject(ViewModel.SelectedProject);
+        }
+    }
+
+    private async void OnExportProject(object? sender, RoutedEventArgs e)
+    {
+        if (ViewModel.SelectedProject is null)
+        {
+            await Info("Selecciona primero un proyecto.");
+            return;
+        }
+
+        var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            Title = "Exportar proyecto",
+            SuggestedFileName = $"{ViewModel.SelectedProject.Nombre}.json",
+            DefaultExtension = "json",
+            FileTypeChoices = new[] { new FilePickerFileType("Proyecto FanucBCKNET (*.json)") { Patterns = new[] { "*.json" } } }
+        });
+
+        if (file is null)
         {
             return;
         }
 
-        _store.Add(new Robot { Nombre = nombre, Grupo = grupo, Ip = ip });
-
-        NombreBox.Text = "";
-        GrupoBox.Text = "";
-        IpBox.Text = "";
-
-        RefreshGroups();
-        RefreshList();
+        try
+        {
+            ViewModel.ExportProject(ViewModel.SelectedProject, file.Path.LocalPath);
+        }
+        catch (Exception ex)
+        {
+            await Info($"No se pudo exportar el proyecto: {ex.Message}");
+        }
     }
 
-    private void OnDeleteRobot(object? sender, RoutedEventArgs e)
+    private async void OnImportProject(object? sender, RoutedEventArgs e)
     {
-        var grupo = GroupsCombo.SelectedItem as string ?? "";
-        var seleccionados = RobotsList.SelectedItems?.Cast<string>().ToList() ?? new List<string>();
-
-        foreach (var nombre in seleccionados)
+        var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
-            _store.Remove(nombre, grupo);
+            Title = "Importar proyecto",
+            AllowMultiple = false,
+            FileTypeFilter = new[] { new FilePickerFileType("Proyecto FanucBCKNET (*.json)") { Patterns = new[] { "*.json" } } }
+        });
+
+        var file = files.FirstOrDefault();
+        if (file is null)
+        {
+            return;
         }
 
-        RefreshGroups();
-        RefreshList();
+        try
+        {
+            ViewModel.ImportProject(file.Path.LocalPath);
+        }
+        catch (Exception ex)
+        {
+            await Info($"No se pudo importar el proyecto: {ex.Message}");
+        }
     }
 
-    private void OnGroupChanged(object? sender, SelectionChangedEventArgs e)
+    // ---------- Robots ----------
+
+    private async void OnAddRobot(object? sender, RoutedEventArgs e)
     {
-        RefreshList();
+        if (ViewModel.SelectedProject is null)
+        {
+            await Info("Crea o selecciona primero un proyecto.");
+            return;
+        }
+
+        var robot = await new RobotDialog().ShowDialog<Robot?>(this);
+        if (robot is not null)
+        {
+            ViewModel.AddRobot(robot);
+        }
     }
 
-    private async void OnChoosePath(object? sender, RoutedEventArgs e)
+    private async void OnEditRobot(object? sender, RoutedEventArgs e)
+    {
+        if (RobotsList.SelectedItem is not Robot seleccionado)
+        {
+            await Info("Selecciona un robot para editar.");
+            return;
+        }
+
+        var editado = await new RobotDialog(seleccionado).ShowDialog<Robot?>(this);
+        if (editado is not null)
+        {
+            ViewModel.UpdateRobot(seleccionado, editado);
+        }
+    }
+
+    private async void OnDeleteRobot(object? sender, RoutedEventArgs e)
+    {
+        var seleccionados = RobotsList.SelectedItems?.Cast<Robot>().ToList() ?? new List<Robot>();
+        if (seleccionados.Count == 0)
+        {
+            await Info("Selecciona uno o varios robots para borrar.");
+            return;
+        }
+
+        var confirmado = await new ConfirmDialog(
+            $"¿Borrar {seleccionados.Count} robot(s) del proyecto?", "Borrar robots").ShowDialog<bool>(this);
+
+        if (confirmado)
+        {
+            ViewModel.DeleteRobots(seleccionados);
+        }
+    }
+
+    // ---------- Backup ----------
+
+    private async void OnChooseDestination(object? sender, RoutedEventArgs e)
     {
         var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
         {
@@ -71,127 +177,30 @@ public partial class MainWindow : Window
         });
 
         var folder = folders.FirstOrDefault();
-        if (folder is null)
+        if (folder is not null)
         {
-            return;
+            ViewModel.DestinationFolder = folder.Path.LocalPath;
         }
-
-        _targetFolder = folder.Path.LocalPath;
-        PathBox.Text = _targetFolder;
     }
 
     private async void OnBackup(object? sender, RoutedEventArgs e)
     {
-        if (_targetFolder == "")
+        var seleccionados = RobotsList.SelectedItems?.Cast<Robot>().ToList() ?? new List<Robot>();
+
+        if (string.IsNullOrWhiteSpace(ViewModel.DestinationFolder))
         {
+            await Info("Elige primero una carpeta destino.");
             return;
         }
 
-        var grupo = GroupsCombo.SelectedItem as string ?? "";
-        var seleccionados = RobotsList.SelectedItems?.Cast<string>().ToHashSet() ?? new HashSet<string>();
         if (seleccionados.Count == 0)
         {
+            await Info("Selecciona uno o varios robots para hacer backup.");
             return;
         }
 
-        var robots = _store.Load()
-            .Where(r => r.Grupo == grupo && seleccionados.Contains(r.Nombre))
-            .ToList();
-
-        if (robots.Count == 0)
-        {
-            return;
-        }
-
-        var timestamp = DateTime.Now.ToString("ddMMyyyy_HHmm");
-        var backupRoot = Path.Combine(_targetFolder, $"Backup_{grupo}_{timestamp}");
-        Directory.CreateDirectory(backupRoot);
-
-        _completed = 0;
-
-        SetBusy(true);
-        BackupProgress.Minimum = 0;
-        BackupProgress.Maximum = robots.Count;
-        BackupProgress.Value = 0;
-        BackupProgress.IsVisible = true;
-
-        var errorLogPath = Path.Combine(backupRoot, "error.log");
-
-        var tareas = robots.Select(robot => BackupOneAsync(backupRoot, robot, errorLogPath)).ToList();
-        await Task.WhenAll(tareas);
-
-        BackupProgress.IsVisible = false;
-        SetBusy(false);
+        await ViewModel.StartBackupAsync(ViewModel.DestinationFolder, seleccionados);
     }
 
-    private async Task BackupOneAsync(string backupRoot, Robot robot, string errorLogPath)
-    {
-        var carpetaRobot = Path.Combine(backupRoot, robot.Nombre);
-        try
-        {
-            await _ftpService.BackupRobotAsync(carpetaRobot, robot);
-        }
-        catch (Exception ex)
-        {
-            var linea = $"{DateTime.Now:O} Error haciendo backup de {robot.Nombre}: {ex.Message}{Environment.NewLine}";
-            await Dispatcher.UIThread.InvokeAsync(() => File.AppendAllText(errorLogPath, linea));
-        }
-        finally
-        {
-            await Dispatcher.UIThread.InvokeAsync(() =>
-            {
-                _completed++;
-                BackupProgress.Value = _completed;
-            });
-        }
-    }
-
-    private void SetBusy(bool busy)
-    {
-        AddButton.IsVisible = !busy;
-        DeleteButton.IsVisible = !busy;
-        BackupButton.IsVisible = !busy;
-        PathButton.IsVisible = !busy;
-        GroupsCombo.IsEnabled = !busy;
-    }
-
-    private void RefreshGroups()
-    {
-        var grupoActual = GroupsCombo.SelectedItem as string;
-
-        var grupos = _store.Load()
-            .Select(r => r.Grupo)
-            .Distinct()
-            .OrderBy(g => g)
-            .ToList();
-
-        GroupsCombo.ItemsSource = grupos;
-
-        if (grupoActual is not null && grupos.Contains(grupoActual))
-        {
-            GroupsCombo.SelectedItem = grupoActual;
-        }
-        else if (grupos.Count > 0)
-        {
-            GroupsCombo.SelectedIndex = 0;
-        }
-    }
-
-    private void RefreshList()
-    {
-        var grupo = GroupsCombo.SelectedItem as string;
-        if (string.IsNullOrEmpty(grupo))
-        {
-            RobotsList.ItemsSource = Array.Empty<string>();
-            return;
-        }
-
-        var nombres = _store.Load()
-            .Where(r => r.Grupo == grupo)
-            .Select(r => r.Nombre)
-            .Distinct()
-            .ToList();
-
-        RobotsList.ItemsSource = nombres;
-    }
+    private Task Info(string mensaje) => new MessageDialog(mensaje).ShowDialog(this);
 }

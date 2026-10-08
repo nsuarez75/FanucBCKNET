@@ -1,0 +1,16 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="FanucBCKNET.Views.ProjectDialog"
+        Title="Proyecto"
+        Width="360" Height="160"
+        CanResize="False"
+        WindowStartupLocation="CenterOwner">
+  <Grid Margin="20" RowDefinitions="Auto,Auto,*,Auto">
+    <TextBlock Grid.Row="0" Text="Nombre del proyecto" FontWeight="SemiBold"/>
+    <TextBox Grid.Row="1" Name="NombreBox" Margin="0,8,0,0" PlaceholderText="p. ej. Planta 2"/>
+    <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+      <Button Name="CancelButton" Content="Cancelar" Click="OnCancel"/>
+      <Button Name="OkButton" Content="Guardar" Classes="accent" Click="OnOk" IsDefault="True"/>
+    </StackPanel>
+  </Grid>
+</Window>

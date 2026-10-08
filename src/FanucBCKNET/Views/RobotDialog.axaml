@@ -1,0 +1,24 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="FanucBCKNET.Views.RobotDialog"
+        Title="Robot"
+        Width="360" Height="300"
+        CanResize="False"
+        WindowStartupLocation="CenterOwner">
+  <Grid Margin="20" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,*,Auto">
+    <TextBlock Grid.Row="0" Text="Nombre" FontWeight="SemiBold"/>
+    <TextBox Grid.Row="1" Name="NombreBox" Margin="0,8,0,16" PlaceholderText="p. ej. R1-Soldadura"/>
+
+    <TextBlock Grid.Row="2" Text="Dirección IP" FontWeight="SemiBold"/>
+    <TextBox Grid.Row="3" Name="IpBox" Margin="0,8,0,16" PlaceholderText="p. ej. 192.168.1.10"/>
+
+    <TextBlock Grid.Row="4" Text="Puerto FTP" FontWeight="SemiBold"/>
+    <NumericUpDown Grid.Row="5" Name="PuertoBox" Margin="0,8,0,0"
+                    Minimum="1" Maximum="65535" Value="21" FormatString="0"/>
+
+    <StackPanel Grid.Row="7" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+      <Button Name="CancelButton" Content="Cancelar" Click="OnCancel"/>
+      <Button Name="OkButton" Content="Guardar" Classes="accent" Click="OnOk" IsDefault="True"/>
+    </StackPanel>
+  </Grid>
+</Window>

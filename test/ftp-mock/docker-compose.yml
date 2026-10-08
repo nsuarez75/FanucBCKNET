@@ -1,0 +1,22 @@
+services:
+  robot1:
+    build: .
+    container_name: fanuc-mock-robot1
+    environment:
+      PASV_ADDRESS: "127.0.0.1"
+      PASV_MIN_PORT: "21100"
+      PASV_MAX_PORT: "21110"
+    ports:
+      - "2121:21"
+      - "21100-21110:21100-21110"
+
+  robot2:
+    build: .
+    container_name: fanuc-mock-robot2
+    environment:
+      PASV_ADDRESS: "127.0.0.1"
+      PASV_MIN_PORT: "21200"
+      PASV_MAX_PORT: "21210"
+    ports:
+      - "2122:21"
+      - "21200-21210:21200-21210"

@@ -1,8 +1,17 @@
+using CommunityToolkit.Mvvm.ComponentModel;
+
 namespace FanucBCKNET.Models;
 
-public class Robot
+public partial class Robot : ObservableObject
 {
-    public string Nombre { get; set; } = "";
-    public string Grupo { get; set; } = "";
-    public string Ip { get; set; } = "";
+    [ObservableProperty]
+    private string _nombre = "";
+
+    [ObservableProperty]
+    private string _ip = "";
+
+    [ObservableProperty]
+    private int _puerto = 21;
+
+    public Robot Clone() => new() { Nombre = Nombre, Ip = Ip, Puerto = Puerto };
 }

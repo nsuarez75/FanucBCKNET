@@ -1,33 +1,117 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:FanucBCKNET.ViewModels"
+        xmlns:m="using:FanucBCKNET.Models"
         x:Class="FanucBCKNET.Views.MainWindow"
-        Title="Auto Backup Fanuc"
-        Width="600" Height="320"
-        MinWidth="560" MinHeight="300">
-  <Grid Margin="12" RowDefinitions="*,Auto" ColumnDefinitions="140,90,*">
+        x:DataType="vm:MainWindowViewModel"
+        Title="FanucBCKNET"
+        Width="1040" Height="660"
+        MinWidth="880" MinHeight="560">
 
-    <StackPanel Grid.Row="0" Grid.Column="0" Spacing="4">
-      <TextBlock Text="Nombre:"/>
-      <TextBox Name="NombreBox"/>
-      <TextBlock Text="Grupo:" Margin="0,8,0,0"/>
-      <TextBox Name="GrupoBox"/>
-      <TextBlock Text="IP:" Margin="0,8,0,0"/>
-      <TextBox Name="IpBox"/>
-      <TextBlock Text="Ruta:" Margin="0,8,0,0"/>
-      <TextBox Name="PathBox" IsReadOnly="True"/>
-    </StackPanel>
+  <Grid ColumnDefinitions="280,*">
 
-    <StackPanel Grid.Row="0" Grid.Column="1" Spacing="8" Margin="12,0,0,0">
-      <Button Name="AddButton" Content="AGREGAR" Click="OnAddRobot" HorizontalAlignment="Stretch"/>
-      <Button Name="DeleteButton" Content="BORRAR" Click="OnDeleteRobot" HorizontalAlignment="Stretch"/>
-      <Button Name="BackupButton" Content="BACKUP" Click="OnBackup" HorizontalAlignment="Stretch"/>
-      <Button Name="PathButton" Content="RUTA" Click="OnChoosePath" HorizontalAlignment="Stretch"/>
-      <ComboBox Name="GroupsCombo" SelectionChanged="OnGroupChanged" HorizontalAlignment="Stretch"/>
-    </StackPanel>
+    <!-- ===== Sidebar: proyectos ===== -->
+    <Border Grid.Column="0" Background="{DynamicResource SidebarBackgroundBrush}">
+      <DockPanel Margin="16">
+        <TextBlock DockPanel.Dock="Top" Text="Proyectos" Classes="sectionTitle" Margin="0,0,0,12"/>
 
-    <ListBox Name="RobotsList" Grid.Row="0" Grid.Column="2" SelectionMode="Multiple" Margin="12,0,0,0"/>
+        <UniformGrid DockPanel.Dock="Top" Columns="3" Rows="1" Margin="0,0,0,6">
+          <Button Content="Nuevo" Click="OnNewProject" Margin="0,0,4,0" HorizontalAlignment="Stretch"/>
+          <Button Content="Editar" Click="OnEditProject" Margin="2,0,2,0" HorizontalAlignment="Stretch"/>
+          <Button Content="Borrar" Click="OnDeleteProject" Margin="4,0,0,0" HorizontalAlignment="Stretch"/>
+        </UniformGrid>
+        <UniformGrid DockPanel.Dock="Top" Columns="2" Rows="1" Margin="0,0,0,12">
+          <Button Content="Exportar..." Click="OnExportProject" Margin="0,0,4,0" HorizontalAlignment="Stretch"/>
+          <Button Content="Importar..." Click="OnImportProject" Margin="4,0,0,0" HorizontalAlignment="Stretch"/>
+        </UniformGrid>
 
-    <ProgressBar Name="BackupProgress" Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="3"
-                 Height="20" Margin="0,12,0,0" IsVisible="False"/>
+        <ListBox DockPanel.Dock="Top"
+                 ItemsSource="{Binding Projects}"
+                 SelectedItem="{Binding SelectedProject, Mode=TwoWay}">
+          <ListBox.ItemTemplate>
+            <DataTemplate x:DataType="m:Project">
+              <StackPanel Margin="4,2">
+                <TextBlock Text="{Binding Nombre}" FontWeight="Medium"/>
+                <TextBlock Text="{Binding Robots.Count, StringFormat='{}{0} robot(s)'}" Classes="subtle"/>
+              </StackPanel>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+      </DockPanel>
+    </Border>
+
+    <!-- ===== Contenido: robots del proyecto ===== -->
+    <Grid Grid.Column="1" Margin="20" RowDefinitions="Auto,Auto,*,Auto" RowSpacing="12">
+
+      <TextBlock Grid.Row="0" Classes="sectionTitle"
+                 Text="{Binding SelectedProject.Nombre, FallbackValue='Ningún proyecto seleccionado'}"/>
+
+      <!-- Toolbar -->
+      <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto" IsEnabled="{Binding HasSelectedProject}">
+        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8">
+          <Button Content="+ Añadir robot" Classes="accent" Click="OnAddRobot"/>
+          <Button Content="Editar" Click="OnEditRobot"/>
+          <Button Content="Borrar" Click="OnDeleteRobot"/>
+        </StackPanel>
+
+        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
+          <TextBox Width="280" Name="PathBox" IsReadOnly="True"
+                    Text="{Binding DestinationFolder}" PlaceholderText="Carpeta destino del backup..."/>
+          <Button Content="Examinar..." Click="OnChooseDestination"/>
+          <Button Content="Iniciar backup" Classes="accent" Click="OnBackup"
+                  IsEnabled="{Binding !IsBackupRunning}"/>
+        </StackPanel>
+      </Grid>
+
+      <!-- Tabla de robots -->
+      <Border Grid.Row="2" Classes="card" Padding="0" IsEnabled="{Binding HasSelectedProject}">
+        <DockPanel>
+          <Border DockPanel.Dock="Top" Padding="16,10" BorderThickness="0,0,0,1" BorderBrush="{DynamicResource CardBorderBrush}">
+            <Grid ColumnDefinitions="*,160,90">
+              <TextBlock Grid.Column="0" Text="NOMBRE" Classes="subtle" FontWeight="SemiBold"/>
+              <TextBlock Grid.Column="1" Text="IP" Classes="subtle" FontWeight="SemiBold"/>
+              <TextBlock Grid.Column="2" Text="PUERTO" Classes="subtle" FontWeight="SemiBold"/>
+            </Grid>
+          </Border>
+
+          <ListBox Name="RobotsList" Background="Transparent" BorderThickness="0"
+                   SelectionMode="Multiple"
+                   ItemsSource="{Binding SelectedProject.Robots}">
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="m:Robot">
+                <Grid ColumnDefinitions="*,160,90" Margin="4,4">
+                  <TextBlock Grid.Column="0" Text="{Binding Nombre}" VerticalAlignment="Center"/>
+                  <TextBlock Grid.Column="1" Text="{Binding Ip}" VerticalAlignment="Center"/>
+                  <TextBlock Grid.Column="2" Text="{Binding Puerto}" VerticalAlignment="Center"/>
+                </Grid>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </DockPanel>
+      </Border>
+
+      <!-- Panel de progreso de backup -->
+      <Border Grid.Row="3" Classes="card" IsVisible="{Binding IsBackupRunning}">
+        <StackPanel Spacing="10">
+          <Grid ColumnDefinitions="*,Auto">
+            <TextBlock Grid.Column="0" Text="Progreso del backup" FontWeight="SemiBold"/>
+            <TextBlock Grid.Column="1" Text="{Binding OverallProgress, StringFormat='{}{0:0}%'}"/>
+          </Grid>
+          <ProgressBar Minimum="0" Maximum="100" Value="{Binding OverallProgress}" Height="8"/>
+
+          <ItemsControl ItemsSource="{Binding BackupItems}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:BackupItemViewModel">
+                <Grid ColumnDefinitions="140,*,Auto" Margin="0,4" ColumnSpacing="10">
+                  <TextBlock Grid.Column="0" Text="{Binding RobotName}" VerticalAlignment="Center"/>
+                  <ProgressBar Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding Progress}" Height="6" VerticalAlignment="Center"/>
+                  <TextBlock Grid.Column="2" Text="{Binding Status}" Classes="subtle" VerticalAlignment="Center"/>
+                </Grid>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </Border>
+    </Grid>
   </Grid>
 </Window>

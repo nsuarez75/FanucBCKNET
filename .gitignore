@@ -1,0 +1,11 @@
+## .NET
+bin/
+obj/
+*.user
+
+## Rider / VS
+.vs/
+.idea/
+
+## Datos locales de la app
+robots.json

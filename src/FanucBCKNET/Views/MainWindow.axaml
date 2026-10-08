@@ -1,0 +1,33 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="FanucBCKNET.Views.MainWindow"
+        Title="Auto Backup Fanuc"
+        Width="600" Height="320"
+        MinWidth="560" MinHeight="300">
+  <Grid Margin="12" RowDefinitions="*,Auto" ColumnDefinitions="140,90,*">
+
+    <StackPanel Grid.Row="0" Grid.Column="0" Spacing="4">
+      <TextBlock Text="Nombre:"/>
+      <TextBox Name="NombreBox"/>
+      <TextBlock Text="Grupo:" Margin="0,8,0,0"/>
+      <TextBox Name="GrupoBox"/>
+      <TextBlock Text="IP:" Margin="0,8,0,0"/>
+      <TextBox Name="IpBox"/>
+      <TextBlock Text="Ruta:" Margin="0,8,0,0"/>
+      <TextBox Name="PathBox" IsReadOnly="True"/>
+    </StackPanel>
+
+    <StackPanel Grid.Row="0" Grid.Column="1" Spacing="8" Margin="12,0,0,0">
+      <Button Name="AddButton" Content="AGREGAR" Click="OnAddRobot" HorizontalAlignment="Stretch"/>
+      <Button Name="DeleteButton" Content="BORRAR" Click="OnDeleteRobot" HorizontalAlignment="Stretch"/>
+      <Button Name="BackupButton" Content="BACKUP" Click="OnBackup" HorizontalAlignment="Stretch"/>
+      <Button Name="PathButton" Content="RUTA" Click="OnChoosePath" HorizontalAlignment="Stretch"/>
+      <ComboBox Name="GroupsCombo" SelectionChanged="OnGroupChanged" HorizontalAlignment="Stretch"/>
+    </StackPanel>
+
+    <ListBox Name="RobotsList" Grid.Row="0" Grid.Column="2" SelectionMode="Multiple" Margin="12,0,0,0"/>
+
+    <ProgressBar Name="BackupProgress" Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="3"
+                 Height="20" Margin="0,12,0,0" IsVisible="False"/>
+  </Grid>
+</Window>
